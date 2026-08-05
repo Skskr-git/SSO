@@ -65,20 +65,25 @@
             <!-- Main Content State -->
             <div id="content-state" class="hidden fade-in">
                 
-                <!-- Demo Mode Warning -->
-                <div id="demo-warning" class="hidden bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-start gap-3 mb-6">
-                    <i data-lucide="database" class="w-5 h-5 text-amber-500 shrink-0"></i>
-                    <p class="text-xs text-amber-700">
-                        <strong>Demo Mode:</strong> Currently using sample data. Add your Google Sheet URL in the HTML file to connect your school's data.
-                    </p>
+                <!-- Tahun Selection -->
+                <div class="space-y-2 mb-4">
+                    <label for="tahun-select" class="block text-sm font-semibold text-slate-700">1. Select Tahun / Tingkatan</label>
+                    <div class="relative">
+                        <select id="tahun-select" onchange="handleTahunSelection()" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow cursor-pointer">
+                            <option value="" disabled selected>Choose Tahun...</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                            <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Class Selection -->
-                <div class="space-y-2 mb-6">
-                    <label for="class-select" class="block text-sm font-semibold text-slate-700">1. Select Your Class</label>
+                <!-- Kelas Selection -->
+                <div id="kelas-section" class="space-y-2 mb-6 opacity-50 pointer-events-none transition-opacity duration-300">
+                    <label for="kelas-select" class="block text-sm font-semibold text-slate-700">2. Select Kelas</label>
                     <div class="relative">
-                        <select id="class-select" onchange="handleClassSelection()" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow cursor-pointer">
-                            <option value="" disabled selected>Choose a class...</option>
+                        <select id="kelas-select" onchange="handleKelasSelection()" disabled class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed">
+                            <option value="" disabled selected>Choose Kelas...</option>
                         </select>
                         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
                             <i data-lucide="chevron-down" class="w-5 h-5"></i>
@@ -88,7 +93,7 @@
 
                 <!-- Student Selection -->
                 <div id="student-section" class="space-y-2 opacity-50 pointer-events-none transition-opacity duration-300">
-                    <label for="student-select" class="block text-sm font-semibold text-slate-700">2. Select Your Name</label>
+                    <label for="student-select" class="block text-sm font-semibold text-slate-700">3. Select Your Name</label>
                     <div class="relative">
                         <select id="student-select" onchange="handleStudentSelection()" disabled class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed">
                             <option value="" disabled selected>Choose your name...</option>
@@ -141,21 +146,9 @@
 
     <script>
         // ============================================================================
-        // ADMIN SETTINGS: Paste your published Google Sheet CSV link here.
+        // ADMIN SETTINGS: Connecting to the exact Google Sheet ID
         // ============================================================================
-        const GOOGLE_SHEET_CSV_URL = ""; 
-
-        // Fallback data
-        const MOCK_CSV_DATA = `Class,ID,Name,Email
-1 Amanah,1a-01,Ahmad bin Abdullah,m-1029384@moe-dl.edu.my
-1 Amanah,1a-02,Chong Mei Ling,m-5839201@moe-dl.edu.my
-1 Amanah,1a-03,Siti Nurhaliza binti Abu,m-8473625@moe-dl.edu.my
-1 Amanah,1a-04,Pravin a/l Subramaniam,m-4728193@moe-dl.edu.my
-2 Bestari,2b-01,Daniel Wong,m-9938271@moe-dl.edu.my
-2 Bestari,2b-02,Farah Diana binti Osman,m-2283746@moe-dl.edu.my
-2 Bestari,2b-03,Kavitha a/p Ramasamy,m-7736251@moe-dl.edu.my
-3 Cemerlang,3c-01,Muhammad Alif bin Rahmat,m-1122334@moe-dl.edu.my
-3 Cemerlang,3c-02,Nurul Huda binti Salleh,m-5566778@moe-dl.edu.my`;
+        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1VEQSUp69hctVlQ1fFhUMSuFYoL3nujsCYNInpyS0ydQ/export?format=csv"; 
 
         // Global State
         let database = {};
@@ -181,16 +174,19 @@
             return ret;
         }
 
-        // Build organized database from CSV
+        // Build organized database from CSV using specific DELIMa headers
         function buildDatabaseFromCSV(csvText) {
             const data = csvToArray(csvText);
             if (data.length < 2) return {};
             
-            const headers = data[0].map(h => h.trim().toLowerCase());
-            const classIdx = headers.findIndex(h => h.includes('class') || h.includes('kelas'));
-            const idIdx = headers.findIndex(h => h === 'id' || h.includes('ic'));
-            const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('nama'));
-            const emailIdx = headers.findIndex(h => h.includes('email') || h.includes('moe'));
+            const headers = data[0].map(h => h.trim().toUpperCase());
+            
+            // Map exact columns from screenshot
+            const emailIdx = headers.findIndex(h => h === 'ID DELIMA');
+            const nameIdx = headers.findIndex(h => h === 'NAMA');
+            const idIdx = headers.findIndex(h => h === 'MOEIS ID');
+            const kelasIdx = headers.findIndex(h => h === 'KELAS');
+            const kodKelasIdx = headers.findIndex(h => h === 'KOD KELAS');
 
             const db = {};
             
@@ -198,15 +194,21 @@
                 const row = data[i];
                 if (row.length === 1 && row[0] === '') continue; // Skip empty
                 
-                const className = classIdx !== -1 && row[classIdx] ? row[classIdx].trim() : null;
-                if (!className) continue; 
+                const tahun = kodKelasIdx !== -1 && row[kodKelasIdx] ? row[kodKelasIdx].trim() : null;
+                const kelas = kelasIdx !== -1 && row[kelasIdx] ? row[kelasIdx].trim() : null;
+                const name = nameIdx !== -1 && row[nameIdx] ? row[nameIdx].trim() : null;
+                const email = emailIdx !== -1 && row[emailIdx] ? row[emailIdx].trim() : null;
                 
-                if (!db[className]) db[className] = [];
+                // We need all these to properly categorize a student
+                if (!tahun || !kelas || !name) continue; 
                 
-                db[className].push({
+                if (!db[tahun]) db[tahun] = {};
+                if (!db[tahun][kelas]) db[tahun][kelas] = [];
+                
+                db[tahun][kelas].push({
                     id: idIdx !== -1 && row[idIdx] ? row[idIdx].trim() : `temp-id-${i}`,
-                    name: nameIdx !== -1 && row[nameIdx] ? row[nameIdx].trim() : 'Unknown Name',
-                    email: emailIdx !== -1 && row[emailIdx] ? row[emailIdx].trim() : ''
+                    name: name,
+                    email: email || 'No Email Found'
                 });
             }
             return db;
@@ -221,19 +223,13 @@
             document.getElementById('refresh-icon').classList.add('animate-spin');
             
             try {
-                let csvText = '';
-                if (GOOGLE_SHEET_CSV_URL && GOOGLE_SHEET_CSV_URL.trim() !== '') {
-                    const response = await fetch(GOOGLE_SHEET_CSV_URL);
-                    if (!response.ok) throw new Error("Failed to load Google Sheet. Ensure it is published to the web.");
-                    csvText = await response.text();
-                    document.getElementById('demo-warning').classList.add('hidden');
-                } else {
-                    csvText = MOCK_CSV_DATA;
-                    document.getElementById('demo-warning').classList.remove('hidden');
-                }
+                const response = await fetch(GOOGLE_SHEET_CSV_URL);
+                if (!response.ok) throw new Error("Could not read database. Please ensure the Google Sheet is set to 'Anyone with the link can view'.");
                 
+                const csvText = await response.text();
                 database = buildDatabaseFromCSV(csvText);
-                populateClassDropdown();
+                
+                populateTahunDropdown();
                 resetSelections();
                 
                 // Show content
@@ -249,33 +245,62 @@
             }
         }
 
-        // Populate DOM elements
-        function populateClassDropdown() {
-            const classSelect = document.getElementById('class-select');
-            // Keep default option
-            classSelect.innerHTML = '<option value="" disabled selected>Choose a class...</option>';
+        // Populate DOM elements (Tahun > Kelas > Name)
+        function populateTahunDropdown() {
+            const tahunSelect = document.getElementById('tahun-select');
+            tahunSelect.innerHTML = '<option value="" disabled selected>Choose Tahun...</option>';
             
-            Object.keys(database).sort().forEach(className => {
+            Object.keys(database).sort().forEach(tahun => {
                 const opt = document.createElement('option');
-                opt.value = className;
-                opt.textContent = className;
-                classSelect.appendChild(opt);
+                opt.value = tahun;
+                opt.textContent = tahun;
+                tahunSelect.appendChild(opt);
             });
         }
 
-        function handleClassSelection() {
-            const classSelect = document.getElementById('class-select');
+        function handleTahunSelection() {
+            const tahunSelect = document.getElementById('tahun-select');
+            const kelasSelect = document.getElementById('kelas-select');
+            const kelasSection = document.getElementById('kelas-section');
+            const selectedTahun = tahunSelect.value;
+
+            // Reset downstream selects
+            kelasSelect.innerHTML = '<option value="" disabled selected>Choose Kelas...</option>';
+            document.getElementById('student-select').innerHTML = '<option value="" disabled selected>Choose your name...</option>';
+            document.getElementById('student-select').disabled = true;
+            document.getElementById('student-section').classList.add('opacity-50', 'pointer-events-none');
+            document.getElementById('action-area').classList.add('hidden');
+            activeStudent = null;
+
+            if (selectedTahun && database[selectedTahun]) {
+                Object.keys(database[selectedTahun]).sort().forEach(kelas => {
+                    const opt = document.createElement('option');
+                    opt.value = kelas;
+                    opt.textContent = kelas;
+                    kelasSelect.appendChild(opt);
+                });
+                
+                kelasSelect.disabled = false;
+                kelasSection.classList.remove('opacity-50', 'pointer-events-none');
+            }
+        }
+
+        function handleKelasSelection() {
+            const tahunSelect = document.getElementById('tahun-select');
+            const kelasSelect = document.getElementById('kelas-select');
             const studentSelect = document.getElementById('student-select');
             const studentSection = document.getElementById('student-section');
-            const selectedClass = classSelect.value;
+            
+            const selectedTahun = tahunSelect.value;
+            const selectedKelas = kelasSelect.value;
 
-            // Reset student select
+            // Reset downstream selects
             studentSelect.innerHTML = '<option value="" disabled selected>Choose your name...</option>';
             document.getElementById('action-area').classList.add('hidden');
             activeStudent = null;
 
-            if (selectedClass && database[selectedClass]) {
-                const students = database[selectedClass].sort((a,b) => a.name.localeCompare(b.name));
+            if (selectedTahun && selectedKelas && database[selectedTahun][selectedKelas]) {
+                const students = database[selectedTahun][selectedKelas].sort((a,b) => a.name.localeCompare(b.name));
                 students.forEach(student => {
                     const opt = document.createElement('option');
                     opt.value = student.id;
@@ -283,20 +308,22 @@
                     studentSelect.appendChild(opt);
                 });
                 
-                // Enable student dropdown
                 studentSelect.disabled = false;
                 studentSection.classList.remove('opacity-50', 'pointer-events-none');
             }
         }
 
         function handleStudentSelection() {
-            const classSelect = document.getElementById('class-select');
+            const tahunSelect = document.getElementById('tahun-select');
+            const kelasSelect = document.getElementById('kelas-select');
             const studentSelect = document.getElementById('student-select');
-            const selectedClass = classSelect.value;
+            
+            const selectedTahun = tahunSelect.value;
+            const selectedKelas = kelasSelect.value;
             const selectedStudentId = studentSelect.value;
 
-            if (selectedClass && selectedStudentId) {
-                activeStudent = database[selectedClass].find(s => s.id === selectedStudentId);
+            if (selectedTahun && selectedKelas && selectedStudentId) {
+                activeStudent = database[selectedTahun][selectedKelas].find(s => s.id === selectedStudentId);
                 
                 if (activeStudent) {
                     document.getElementById('student-email').textContent = activeStudent.email;
@@ -306,10 +333,16 @@
         }
 
         function resetSelections() {
-            document.getElementById('class-select').value = "";
+            document.getElementById('tahun-select').value = "";
+            
+            document.getElementById('kelas-select').innerHTML = '<option value="" disabled selected>Choose Kelas...</option>';
+            document.getElementById('kelas-select').disabled = true;
+            document.getElementById('kelas-section').classList.add('opacity-50', 'pointer-events-none');
+            
             document.getElementById('student-select').innerHTML = '<option value="" disabled selected>Choose your name...</option>';
             document.getElementById('student-select').disabled = true;
             document.getElementById('student-section').classList.add('opacity-50', 'pointer-events-none');
+            
             document.getElementById('action-area').classList.add('hidden');
             activeStudent = null;
         }
