@@ -146,9 +146,9 @@
 
     <script>
         // ============================================================================
-        // ADMIN SETTINGS: Connecting to the exact Google Sheet ID
+        // ADMIN SETTINGS: Paste your Google Apps Script Web App URL here
         // ============================================================================
-        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1VEQSUp69hctVlQ1fFhUMSuFYoL3nujsCYNInpyS0ydQ/export?format=csv"; 
+        const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxr4P_ogZJIF80CpCAtJ8nxqaS4F0pQUp0cmPMkmTfSt2eGNJ1zjx4h1waGBldGjQAieQ/exec"; 
 
         // Global State
         let database = {};
@@ -157,60 +157,30 @@
         // Initialize Lucide Icons
         lucide.createIcons();
 
-        // Robust CSV Parser
-        function csvToArray(text) {
-            let p = '', row = [''], ret = [row], i = 0, r = 0, s = !0, l;
-            for (l of text) {
-                if ('"' === l) {
-                    if (s && l === p) row[i] += l;
-                    s = !s;
-                } else if (',' === l && s) l = row[++i] = '';
-                else if ('\n' === l && s) {
-                    if ('\r' === p) row[i] = row[i].slice(0, -1);
-                    row = ret[++r] = ['']; i = 0;
-                } else row[i] += l;
-                p = l;
-            }
-            return ret;
-        }
-
-        // Build organized database from CSV using specific DELIMa headers
-        function buildDatabaseFromCSV(csvText) {
-            const data = csvToArray(csvText);
-            if (data.length < 2) return {};
-            
-            const headers = data[0].map(h => h.trim().toUpperCase());
-            
-            // Map exact columns from screenshot
-            const emailIdx = headers.findIndex(h => h === 'ID DELIMA');
-            const nameIdx = headers.findIndex(h => h === 'NAMA');
-            const idIdx = headers.findIndex(h => h === 'MOEIS ID');
-            const kelasIdx = headers.findIndex(h => h === 'KELAS');
-            const kodKelasIdx = headers.findIndex(h => h === 'KOD KELAS');
-
+        // Build organized database from JSON
+        function buildDatabaseFromJSON(data) {
             const db = {};
             
-            for (let i = 1; i < data.length; i++) {
-                const row = data[i];
-                if (row.length === 1 && row[0] === '') continue; // Skip empty
-                
-                const tahun = kodKelasIdx !== -1 && row[kodKelasIdx] ? row[kodKelasIdx].trim() : null;
-                const kelas = kelasIdx !== -1 && row[kelasIdx] ? row[kelasIdx].trim() : null;
-                const name = nameIdx !== -1 && row[nameIdx] ? row[nameIdx].trim() : null;
-                const email = emailIdx !== -1 && row[emailIdx] ? row[emailIdx].trim() : null;
+            data.forEach(row => {
+                // Using the exact header names from your screenshot
+                const tahun = row['KOD KELAS'] ? String(row['KOD KELAS']).trim() : null;
+                const kelas = row['KELAS'] ? String(row['KELAS']).trim() : null;
+                const name = row['NAMA'] ? String(row['NAMA']).trim() : null;
+                const email = row['ID DELIMa'] ? String(row['ID DELIMa']).trim() : null;
+                const id = row['MOEIS ID'] ? String(row['MOEIS ID']).trim() : `temp-id-${Math.random()}`;
                 
                 // We need all these to properly categorize a student
-                if (!tahun || !kelas || !name) continue; 
+                if (!tahun || !kelas || !name) return; 
                 
                 if (!db[tahun]) db[tahun] = {};
                 if (!db[tahun][kelas]) db[tahun][kelas] = [];
                 
                 db[tahun][kelas].push({
-                    id: idIdx !== -1 && row[idIdx] ? row[idIdx].trim() : `temp-id-${i}`,
+                    id: id,
                     name: name,
                     email: email || 'No Email Found'
                 });
-            }
+            });
             return db;
         }
 
@@ -223,11 +193,16 @@
             document.getElementById('refresh-icon').classList.add('animate-spin');
             
             try {
-                const response = await fetch(GOOGLE_SHEET_CSV_URL);
-                if (!response.ok) throw new Error("Could not read database. Please ensure the Google Sheet is set to 'Anyone with the link can view'.");
+                if (APP_SCRIPT_URL === "PASTE_YOUR_APPS_SCRIPT_URL_HERE") {
+                    throw new Error("Please add your Apps Script URL to the code.");
+                }
+
+                // Fetching from your Apps Script API
+                const response = await fetch(APP_SCRIPT_URL);
+                if (!response.ok) throw new Error("Could not read database.");
                 
-                const csvText = await response.text();
-                database = buildDatabaseFromCSV(csvText);
+                const jsonData = await response.json();
+                database = buildDatabaseFromJSON(jsonData);
                 
                 populateTahunDropdown();
                 resetSelections();
