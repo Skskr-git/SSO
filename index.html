@@ -1,1 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student SSO Portal</title>
+    
+    <!-- Load Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Load Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Smooth transitions for UI states */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 sm:p-6 text-slate-800">
+
+    <!-- Background Decorative Elements -->
+    <div class="absolute top-0 left-0 w-full h-64 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-b-[3rem] shadow-lg overflow-hidden -z-10">
+        <div class="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+    </div>
+
+    <!-- Main Card -->
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 z-10">
+        
+        <!-- Header -->
+        <div class="p-6 sm:p-8 border-b border-slate-100 text-center relative">
+            <button id="refresh-btn" onclick="loadData()" title="Refresh database" class="absolute top-4 right-4 p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors">
+                <i data-lucide="refresh-cw" class="w-4 h-4" id="refresh-icon"></i>
+            </button>
+
+            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                <i data-lucide="school" class="w-8 h-8 text-blue-600"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Student Portal</h1>
+            <p class="text-sm text-slate-500 mt-2">Sign in seamlessly with your MOE ID</p>
+        </div>
+
+        <div class="p-6 sm:p-8 space-y-6 min-h-[300px]">
+            
+            <!-- Loading State -->
+            <div id="loading-state" class="flex flex-col items-center justify-center py-10 space-y-4">
+                <div class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                <p class="text-sm font-medium text-slate-500 animate-pulse">Syncing school database...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="error-state" class="hidden bg-red-50 border border-red-200 rounded-xl p-5 text-center fade-in">
+                <i data-lucide="alert-circle" class="w-8 h-8 text-red-500 mx-auto mb-2"></i>
+                <h3 class="text-sm font-bold text-red-800 mb-1">Database Error</h3>
+                <p id="error-message" class="text-xs text-red-600"></p>
+                <button onclick="loadData()" class="mt-4 text-xs font-semibold bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200 transition-colors">
+                    Try Again
+                </button>
+            </div>
+
+            <!-- Main Content State -->
+            <div id="content-state" class="hidden fade-in">
+                
+                <!-- Demo Mode Warning -->
+                <div id="demo-warning" class="hidden bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-start gap-3 mb-6">
+                    <i data-lucide="database" class="w-5 h-5 text-amber-500 shrink-0"></i>
+                    <p class="text-xs text-amber-700">
+                        <strong>Demo Mode:</strong> Currently using sample data. Add your Google Sheet URL in the HTML file to connect your school's data.
+                    </p>
+                </div>
+
+                <!-- Class Selection -->
+                <div class="space-y-2 mb-6">
+                    <label for="class-select" class="block text-sm font-semibold text-slate-700">1. Select Your Class</label>
+                    <div class="relative">
+                        <select id="class-select" onchange="handleClassSelection()" class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow cursor-pointer">
+                            <option value="" disabled selected>Choose a class...</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                            <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Student Selection -->
+                <div id="student-section" class="space-y-2 opacity-50 pointer-events-none transition-opacity duration-300">
+                    <label for="student-select" class="block text-sm font-semibold text-slate-700">2. Select Your Name</label>
+                    <div class="relative">
+                        <select id="student-select" onchange="handleStudentSelection()" disabled class="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-3 px-4 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed">
+                            <option value="" disabled selected>Choose your name...</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                            <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Area -->
+                <div id="action-area" class="hidden mt-6 fade-in">
+                    <div class="bg-blue-50 border border-blue-100 rounded-xl p-5 mb-6 text-center shadow-inner relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-16 h-16 bg-blue-100 rounded-bl-full -mr-8 -mt-8"></div>
+                        
+                        <span class="block text-xs font-bold text-blue-500 uppercase tracking-wider mb-1">Your MOE Email</span>
+                        <div id="student-email" class="text-lg font-medium text-blue-900 break-all select-all flex items-center justify-center gap-2">
+                            <!-- Email injected here -->
+                        </div>
+                        
+                        <button onclick="copyEmail()" class="mt-3 inline-flex items-center justify-center gap-1.5 text-sm font-medium text-blue-700 hover:text-blue-800 bg-white/60 hover:bg-white py-1.5 px-3 rounded-lg border border-blue-200 transition-colors">
+                            <i data-lucide="copy" class="w-4 h-4" id="copy-icon"></i>
+                            <span id="copy-text">Copy Email</span>
+                        </button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <button id="sso-btn" onclick="handleSSOLogin()" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3.5 px-4 rounded-xl font-semibold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all active:scale-[0.98]">
+                            <i data-lucide="log-in" class="w-5 h-5" id="sso-icon"></i>
+                            <span id="sso-text">Continue to DELIMa Portal</span>
+                        </button>
+                        
+                        <div class="flex items-start gap-2 text-xs text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <i data-lucide="alert-circle" class="w-4 h-4 text-amber-500 shrink-0 mt-0.5"></i>
+                            <p>Clicking continue will ensure your device uses this specific MOE ID for your learning apps.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        
+        <div class="bg-slate-50 py-4 px-4 flex justify-between items-center text-xs text-slate-400 border-t border-slate-100">
+            <span>Powered by School SSO</span>
+            <span class="flex items-center gap-1">
+                <i data-lucide="database" class="w-3 h-3"></i> Live Sync
+            </span>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // ADMIN SETTINGS: Paste your published Google Sheet CSV link here.
+        // ============================================================================
+        const GOOGLE_SHEET_CSV_URL = ""; 
+
+        // Fallback data
+        const MOCK_CSV_DATA = `Class,ID,Name,Email
+1 Amanah,1a-01,Ahmad bin Abdullah,m-1029384@moe-dl.edu.my
+1 Amanah,1a-02,Chong Mei Ling,m-5839201@moe-dl.edu.my
+1 Amanah,1a-03,Siti Nurhaliza binti Abu,m-8473625@moe-dl.edu.my
+1 Amanah,1a-04,Pravin a/l Subramaniam,m-4728193@moe-dl.edu.my
+2 Bestari,2b-01,Daniel Wong,m-9938271@moe-dl.edu.my
+2 Bestari,2b-02,Farah Diana binti Osman,m-2283746@moe-dl.edu.my
+2 Bestari,2b-03,Kavitha a/p Ramasamy,m-7736251@moe-dl.edu.my
+3 Cemerlang,3c-01,Muhammad Alif bin Rahmat,m-1122334@moe-dl.edu.my
+3 Cemerlang,3c-02,Nurul Huda binti Salleh,m-5566778@moe-dl.edu.my`;
+
+        // Global State
+        let database = {};
+        let activeStudent = null;
+
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Robust CSV Parser
+        function csvToArray(text) {
+            let p = '', row = [''], ret = [row], i = 0, r = 0, s = !0, l;
+            for (l of text) {
+                if ('"' === l) {
+                    if (s && l === p) row[i] += l;
+                    s = !s;
+                } else if (',' === l && s) l = row[++i] = '';
+                else if ('\n' === l && s) {
+                    if ('\r' === p) row[i] = row[i].slice(0, -1);
+                    row = ret[++r] = ['']; i = 0;
+                } else row[i] += l;
+                p = l;
+            }
+            return ret;
+        }
+
+        // Build organized database from CSV
+        function buildDatabaseFromCSV(csvText) {
+            const data = csvToArray(csvText);
+            if (data.length < 2) return {};
+            
+            const headers = data[0].map(h => h.trim().toLowerCase());
+            const classIdx = headers.findIndex(h => h.includes('class') || h.includes('kelas'));
+            const idIdx = headers.findIndex(h => h === 'id' || h.includes('ic'));
+            const nameIdx = headers.findIndex(h => h.includes('name') || h.includes('nama'));
+            const emailIdx = headers.findIndex(h => h.includes('email') || h.includes('moe'));
+
+            const db = {};
+            
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (row.length === 1 && row[0] === '') continue; // Skip empty
+                
+                const className = classIdx !== -1 && row[classIdx] ? row[classIdx].trim() : null;
+                if (!className) continue; 
+                
+                if (!db[className]) db[className] = [];
+                
+                db[className].push({
+                    id: idIdx !== -1 && row[idIdx] ? row[idIdx].trim() : `temp-id-${i}`,
+                    name: nameIdx !== -1 && row[nameIdx] ? row[nameIdx].trim() : 'Unknown Name',
+                    email: emailIdx !== -1 && row[emailIdx] ? row[emailIdx].trim() : ''
+                });
+            }
+            return db;
+        }
+
+        // Load Data Process
+        async function loadData() {
+            // UI setup for loading
+            document.getElementById('loading-state').classList.remove('hidden');
+            document.getElementById('error-state').classList.add('hidden');
+            document.getElementById('content-state').classList.add('hidden');
+            document.getElementById('refresh-icon').classList.add('animate-spin');
+            
+            try {
+                let csvText = '';
+                if (GOOGLE_SHEET_CSV_URL && GOOGLE_SHEET_CSV_URL.trim() !== '') {
+                    const response = await fetch(GOOGLE_SHEET_CSV_URL);
+                    if (!response.ok) throw new Error("Failed to load Google Sheet. Ensure it is published to the web.");
+                    csvText = await response.text();
+                    document.getElementById('demo-warning').classList.add('hidden');
+                } else {
+                    csvText = MOCK_CSV_DATA;
+                    document.getElementById('demo-warning').classList.remove('hidden');
+                }
+                
+                database = buildDatabaseFromCSV(csvText);
+                populateClassDropdown();
+                resetSelections();
+                
+                // Show content
+                document.getElementById('loading-state').classList.add('hidden');
+                document.getElementById('content-state').classList.remove('hidden');
+            } catch (err) {
+                console.error(err);
+                document.getElementById('error-message').textContent = err.message || "Error loading database.";
+                document.getElementById('loading-state').classList.add('hidden');
+                document.getElementById('error-state').classList.remove('hidden');
+            } finally {
+                document.getElementById('refresh-icon').classList.remove('animate-spin');
+            }
+        }
+
+        // Populate DOM elements
+        function populateClassDropdown() {
+            const classSelect = document.getElementById('class-select');
+            // Keep default option
+            classSelect.innerHTML = '<option value="" disabled selected>Choose a class...</option>';
+            
+            Object.keys(database).sort().forEach(className => {
+                const opt = document.createElement('option');
+                opt.value = className;
+                opt.textContent = className;
+                classSelect.appendChild(opt);
+            });
+        }
+
+        function handleClassSelection() {
+            const classSelect = document.getElementById('class-select');
+            const studentSelect = document.getElementById('student-select');
+            const studentSection = document.getElementById('student-section');
+            const selectedClass = classSelect.value;
+
+            // Reset student select
+            studentSelect.innerHTML = '<option value="" disabled selected>Choose your name...</option>';
+            document.getElementById('action-area').classList.add('hidden');
+            activeStudent = null;
+
+            if (selectedClass && database[selectedClass]) {
+                const students = database[selectedClass].sort((a,b) => a.name.localeCompare(b.name));
+                students.forEach(student => {
+                    const opt = document.createElement('option');
+                    opt.value = student.id;
+                    opt.textContent = student.name;
+                    studentSelect.appendChild(opt);
+                });
+                
+                // Enable student dropdown
+                studentSelect.disabled = false;
+                studentSection.classList.remove('opacity-50', 'pointer-events-none');
+            }
+        }
+
+        function handleStudentSelection() {
+            const classSelect = document.getElementById('class-select');
+            const studentSelect = document.getElementById('student-select');
+            const selectedClass = classSelect.value;
+            const selectedStudentId = studentSelect.value;
+
+            if (selectedClass && selectedStudentId) {
+                activeStudent = database[selectedClass].find(s => s.id === selectedStudentId);
+                
+                if (activeStudent) {
+                    document.getElementById('student-email').textContent = activeStudent.email;
+                    document.getElementById('action-area').classList.remove('hidden');
+                }
+            }
+        }
+
+        function resetSelections() {
+            document.getElementById('class-select').value = "";
+            document.getElementById('student-select').innerHTML = '<option value="" disabled selected>Choose your name...</option>';
+            document.getElementById('student-select').disabled = true;
+            document.getElementById('student-section').classList.add('opacity-50', 'pointer-events-none');
+            document.getElementById('action-area').classList.add('hidden');
+            activeStudent = null;
+        }
+
+        // Actions
+        async function copyEmail() {
+            if (!activeStudent) return;
+            try {
+                // Fallback approach for better mobile iFrame compatibility
+                const textArea = document.createElement("textarea");
+                textArea.value = activeStudent.email;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                // Update UI visually
+                document.getElementById('copy-text').textContent = "Copied to clipboard!";
+                document.getElementById('copy-icon').setAttribute('data-lucide', 'check-circle-2');
+                document.getElementById('copy-icon').classList.add('text-green-600');
+                lucide.createIcons();
+                
+                setTimeout(() => {
+                    document.getElementById('copy-text').textContent = "Copy Email";
+                    document.getElementById('copy-icon').setAttribute('data-lucide', 'copy');
+                    document.getElementById('copy-icon').classList.remove('text-green-600');
+                    lucide.createIcons();
+                }, 3000);
+            } catch (err) {
+                console.error('Failed to copy', err);
+            }
+        }
+
+        function handleSSOLogin() {
+            if (!activeStudent) return;
+            
+            const btn = document.getElementById('sso-btn');
+            const text = document.getElementById('sso-text');
+            const icon = document.getElementById('sso-icon');
+            
+            // Loading state
+            btn.classList.add('opacity-70', 'cursor-wait');
+            text.textContent = "Connecting...";
+            icon.classList.add('hidden');
+            
+            setTimeout(() => {
+                btn.classList.remove('opacity-70', 'cursor-wait');
+                text.textContent = "Continue to DELIMa Portal";
+                icon.classList.remove('hidden');
+                
+                // Construct SSO URL with the selected email to redirect to DELIMa
+                const targetUrl = `https://accounts.google.com/AccountChooser/signinchooser?Email=${encodeURIComponent(activeStudent.email)}&continue=https://d3.delima.edu.my/`;
+                window.open(targetUrl, '_blank', 'noopener,noreferrer');
+            }, 800);
+        }
+
+        // Initialize App on load
+        window.onload = () => {
+            loadData();
+        };
+    </script>
+</body>
+</html>
