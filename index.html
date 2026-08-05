@@ -148,7 +148,7 @@
 
     <script>
         // ============================================================================
-        // ADMIN SETTINGS: Paste your Google Apps Script Web App URL here
+        // ADMIN SETTINGS: Your Google Apps Script Web App URL
         // ============================================================================
         const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxr4P_ogZJIF80CpCAtJ8nxqaS4F0pQUp0cmPMkmTfSt2eGNJ1zjx4h1waGBldGjQAieQ/exec"; 
 
@@ -164,14 +164,12 @@
             const db = {};
             
             data.forEach(row => {
-                // Using the exact header names from your screenshot
                 const tahun = row['KOD KELAS'] ? String(row['KOD KELAS']).trim() : null;
                 const kelas = row['KELAS'] ? String(row['KELAS']).trim() : null;
                 const name = row['NAMA'] ? String(row['NAMA']).trim() : null;
                 const email = row['ID DELIMa'] ? String(row['ID DELIMa']).trim() : null;
                 const id = row['MOEIS ID'] ? String(row['MOEIS ID']).trim() : `temp-id-${Math.random()}`;
                 
-                // We need all these to properly categorize a student
                 if (!tahun || !kelas || !name) return; 
                 
                 if (!db[tahun]) db[tahun] = {};
@@ -188,28 +186,35 @@
 
         // Load Data Process
         async function loadData() {
-            // UI setup for loading
             document.getElementById('loading-state').classList.remove('hidden');
             document.getElementById('error-state').classList.add('hidden');
             document.getElementById('content-state').classList.add('hidden');
             document.getElementById('refresh-icon').classList.add('animate-spin');
             
             try {
-                if (APP_SCRIPT_URL === "https://script.google.com/macros/s/AKfycbxr4P_ogZJIF80CpCAtJ8nxqaS4F0pQUp0cmPMkmTfSt2eGNJ1zjx4h1waGBldGjQAieQ/exec") {
+                if (APP_SCRIPT_URL.includes("PASTE_YOUR_APPS_SCRIPT_URL_HERE")) {
                     throw new Error("Please add your Apps Script URL to the code.");
                 }
 
-                // Fetching from your Apps Script API
-                const response = await fetch(APP_SCRIPT_URL);
-                if (!response.ok) throw new Error("Could not read database.");
+                const response = await fetch(APP_SCRIPT_URL + "?nocache=" + new Date().getTime());
+                
+                if (response.url && response.url.includes("ServiceLogin")) {
+                    throw new Error("MOE Security Block: Please host the Google Sheet on a personal @gmail.com account.");
+                }
+                
+                if (!response.ok) throw new Error("Could not read database. Status: " + response.status);
                 
                 const jsonData = await response.json();
+                
+                if (!Array.isArray(jsonData)) {
+                    throw new Error("Invalid data format received from Apps Script.");
+                }
+
                 database = buildDatabaseFromJSON(jsonData);
                 
                 populateTahunDropdown();
                 resetSelections();
                 
-                // Show content
                 document.getElementById('loading-state').classList.add('hidden');
                 document.getElementById('content-state').classList.remove('hidden');
             } catch (err) {
@@ -241,7 +246,6 @@
             const kelasSection = document.getElementById('kelas-section');
             const selectedTahun = tahunSelect.value;
 
-            // Reset downstream selects
             kelasSelect.innerHTML = '<option value="" disabled selected>Choose Kelas...</option>';
             document.getElementById('student-select').innerHTML = '<option value="" disabled selected>Choose your name...</option>';
             document.getElementById('student-select').disabled = true;
@@ -271,7 +275,6 @@
             const selectedTahun = tahunSelect.value;
             const selectedKelas = kelasSelect.value;
 
-            // Reset downstream selects
             studentSelect.innerHTML = '<option value="" disabled selected>Choose your name...</option>';
             document.getElementById('action-area').classList.add('hidden');
             activeStudent = null;
@@ -328,7 +331,6 @@
         async function copyEmail() {
             if (!activeStudent) return;
             try {
-                // Fallback approach for better mobile iFrame compatibility
                 const textArea = document.createElement("textarea");
                 textArea.value = activeStudent.email;
                 document.body.appendChild(textArea);
@@ -336,7 +338,6 @@
                 document.execCommand('copy');
                 document.body.removeChild(textArea);
                 
-                // Update UI visually
                 document.getElementById('copy-text').textContent = "Copied to clipboard!";
                 document.getElementById('copy-icon').setAttribute('data-lucide', 'check-circle-2');
                 document.getElementById('copy-icon').classList.add('text-green-600');
@@ -360,7 +361,6 @@
             const text = document.getElementById('sso-text');
             const icon = document.getElementById('sso-icon');
             
-            // Loading state
             btn.classList.add('opacity-70', 'cursor-wait');
             text.textContent = "Connecting...";
             icon.classList.add('hidden');
@@ -370,7 +370,6 @@
                 text.textContent = "Continue to DELIMa Portal";
                 icon.classList.remove('hidden');
                 
-                // Construct SSO URL with the selected email to redirect to DELIMa
                 const targetUrl = `https://accounts.google.com/AccountChooser/signinchooser?Email=${encodeURIComponent(activeStudent.email)}&continue=https://d3.delima.edu.my/`;
                 window.open(targetUrl, '_blank', 'noopener,noreferrer');
             }, 800);
